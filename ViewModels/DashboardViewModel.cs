@@ -391,12 +391,28 @@ namespace MyJournalApp.ViewModels
             if (!string.IsNullOrEmpty(navItem))
             {
                 SelectedNavItem = navItem;
+                switch (navItem)
+                {
+                    case "Calendar":
+                        NavigationService.Instance.NavigateTo("Calendar");
+                        break;
+                    case "Entries":
+                    case "Timeline":
+                        NavigationService.Instance.NavigateTo("Timeline");
+                        break;
+                    case "Analytics":
+                        NavigationService.Instance.NavigateTo("Analytics");
+                        break;
+                    case "Settings":
+                        NavigationService.Instance.NavigateTo("Settings");
+                        break;
+                }
             }
         }
 
         private void ExecuteViewAllEntries()
         {
-            SelectedNavItem = "Entries";
+            NavigationService.Instance.NavigateTo("Timeline");
         }
 
         private void ExecuteLogout()

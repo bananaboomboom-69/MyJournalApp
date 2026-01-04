@@ -77,7 +77,7 @@ namespace MyJournalApp.Services
 
             // Verify the password using BCrypt
             bool isValid = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
-            
+
             if (isValid)
             {
                 CurrentUser = user;
@@ -101,6 +101,37 @@ namespace MyJournalApp.Services
         {
             var user = _database.GetUser();
             return user?.UsePin ?? false;
+        }
+
+        /// <summary>
+        /// Verifies the provided password against the current user's stored hash.
+        /// </summary>
+        /// <param name="password">Plain text password to verify.</param>
+        /// <returns>True if password is correct.</returns>
+        public bool VerifyPassword(string password)
+        {
+            if (CurrentUser == null || string.IsNullOrWhiteSpace(password))
+                return false;
+
+            return BCrypt.Net.BCrypt.Verify(password, CurrentUser.PasswordHash);
+        }
+
+        /// <summary>
+        /// Updates the current user's password.
+        /// </summary>
+        /// <param name="newPassword">The new password to set.</param>
+        /// <returns>True if update was successful.</returns>
+        public bool UpdatePassword(string newPassword)
+        {
+            if (CurrentUser == null || string.IsNullOrWhiteSpace(newPassword))
+                return false;
+
+            // Hash the new password
+            string newPasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, workFactor: 12);
+
+            // Update in database
+            CurrentUser.PasswordHash = newPasswordHash;
+            return _database.UpdateUserPassword(CurrentUser.Id, newPasswordHash);
         }
     }
 }

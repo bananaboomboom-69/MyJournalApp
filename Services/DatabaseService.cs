@@ -29,11 +29,11 @@ namespace MyJournalApp.Services
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "MyJournalApp"
             );
-            
+
             Directory.CreateDirectory(appDataPath);
             _databasePath = Path.Combine(appDataPath, "journal.db");
             _connectionString = $"Data Source={_databasePath}";
-            
+
             InitializeDatabase();
         }
 
@@ -114,7 +114,7 @@ namespace MyJournalApp.Services
             command.CommandText = @"
                 INSERT INTO Users (Username, PasswordHash, UsePin, CreatedAt)
                 VALUES (@Username, @PasswordHash, @UsePin, @CreatedAt)";
-            
+
             command.Parameters.AddWithValue("@Username", user.Username);
             command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
             command.Parameters.AddWithValue("@UsePin", user.UsePin ? 1 : 0);
@@ -133,8 +133,27 @@ namespace MyJournalApp.Services
 
             var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM Users";
-            
+
             return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        }
+
+        /// <summary>
+        /// Updates the user's password hash.
+        /// </summary>
+        /// <param name="userId">The user's ID.</param>
+        /// <param name="newPasswordHash">The new BCrypt password hash.</param>
+        /// <returns>True if update was successful.</returns>
+        public bool UpdateUserPassword(int userId, string newPasswordHash)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Users SET PasswordHash = @PasswordHash WHERE Id = @UserId";
+            command.Parameters.AddWithValue("@PasswordHash", newPasswordHash);
+            command.Parameters.AddWithValue("@UserId", userId);
+
+            return command.ExecuteNonQuery() > 0;
         }
 
         #endregion
@@ -225,7 +244,7 @@ namespace MyJournalApp.Services
             command.CommandText = @"
                 INSERT INTO JournalEntries (Title, Content, Mood, Tags, WordCount, EntryDate, CreatedAt)
                 VALUES (@Title, @Content, @Mood, @Tags, @WordCount, @EntryDate, @CreatedAt)";
-            
+
             command.Parameters.AddWithValue("@Title", entry.Title);
             command.Parameters.AddWithValue("@Content", entry.Content);
             command.Parameters.AddWithValue("@Mood", entry.Mood.ToString());
@@ -247,7 +266,7 @@ namespace MyJournalApp.Services
 
             var command = connection.CreateCommand();
             command.CommandText = "SELECT COUNT(*) FROM JournalEntries";
-            
+
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
@@ -260,13 +279,13 @@ namespace MyJournalApp.Services
             connection.Open();
 
             var startOfWeek = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
-            
+
             var command = connection.CreateCommand();
             command.CommandText = @"
                 SELECT COUNT(*) FROM JournalEntries 
                 WHERE date(EntryDate) >= date(@StartOfWeek)";
             command.Parameters.AddWithValue("@StartOfWeek", startOfWeek.ToString("yyyy-MM-dd"));
-            
+
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
@@ -279,13 +298,13 @@ namespace MyJournalApp.Services
             connection.Open();
 
             var startDate = DateTime.Today.AddDays(-days);
-            
+
             var command = connection.CreateCommand();
             command.CommandText = @"
                 SELECT COALESCE(SUM(WordCount), 0) FROM JournalEntries 
                 WHERE date(EntryDate) >= date(@StartDate)";
             command.Parameters.AddWithValue("@StartDate", startDate.ToString("yyyy-MM-dd"));
-            
+
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
@@ -372,7 +391,7 @@ namespace MyJournalApp.Services
             connection.Open();
 
             var startDate = DateTime.Today.AddDays(-days);
-            
+
             var command = connection.CreateCommand();
             command.CommandText = @"
                 SELECT Mood, COUNT(*) as Count 

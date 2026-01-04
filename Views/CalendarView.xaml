@@ -1,0 +1,672 @@
+<UserControl
+    x:Class="MyJournalApp.Views.CalendarView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:MyJournalApp.Converters"
+    xmlns:viewmodels="clr-namespace:MyJournalApp.ViewModels"
+    Background="#0D1117">
+
+    <UserControl.DataContext>
+        <viewmodels:CalendarViewModel />
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!--  Navigation Button Style  -->
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#8B949E" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#21262D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  Active Navigation Button  -->
+        <Style
+            x:Key="NavButtonActive"
+            BasedOn="{StaticResource NavButton}"
+            TargetType="Button">
+            <Setter Property="Background" Value="#1A3A5C" />
+            <Setter Property="Foreground" Value="#58A6FF" />
+        </Style>
+
+        <!--  View Toggle Button  -->
+        <Style x:Key="ViewToggleButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#8B949E" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#30363D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  Mood Filter Chip  -->
+        <Style x:Key="MoodChip" TargetType="Button">
+            <Setter Property="Background" Value="#21262D" />
+            <Setter Property="Foreground" Value="#C9D1D9" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="16">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#30363D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  Primary Button  -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#238636" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2EA043" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  Arrow Button  -->
+        <Style x:Key="ArrowButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#8B949E" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#21262D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  Sidebar  -->
+        <Border
+            Grid.Column="0"
+            Background="#0D1117"
+            BorderBrush="#21262D"
+            BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  Logo Section  -->
+                <StackPanel
+                    Grid.Row="0"
+                    Margin="20,24,20,32"
+                    Orientation="Horizontal">
+                    <Border
+                        Width="40"
+                        Height="40"
+                        CornerRadius="20">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Offset="0" Color="#1A3A5C" />
+                                <GradientStop Offset="1" Color="#0D2030" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Ellipse
+                            Width="24"
+                            Height="24"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Fill="#58A6FF" />
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="White"
+                            Text="Mindful Journal" />
+                        <TextBlock
+                            FontSize="11"
+                            Foreground="#8B949E"
+                            Text="Daily Reflection" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!--  Navigation Menu  -->
+                <StackPanel Grid.Row="1" Margin="12,0">
+                    <Button
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Journal"
+                        Style="{StaticResource NavButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,12,0"
+                                FontSize="16"
+                                Text="📓" />
+                            <TextBlock VerticalAlignment="Center" Text="Journal" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        Margin="0,4,0,0"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Calendar"
+                        Style="{StaticResource NavButtonActive}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,12,0"
+                                FontSize="16"
+                                Text="📅" />
+                            <TextBlock VerticalAlignment="Center" Text="Calendar" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        Margin="0,4,0,0"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Insights"
+                        Style="{StaticResource NavButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,12,0"
+                                FontSize="16"
+                                Text="📈" />
+                            <TextBlock VerticalAlignment="Center" Text="Insights" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        Margin="0,4,0,0"
+                        Command="{Binding NavigateCommand}"
+                        CommandParameter="Settings"
+                        Style="{StaticResource NavButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,12,0"
+                                FontSize="16"
+                                Text="⚙️" />
+                            <TextBlock VerticalAlignment="Center" Text="Settings" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!--  User Profile  -->
+                <Border
+                    Grid.Row="2"
+                    Padding="16,16"
+                    BorderBrush="#21262D"
+                    BorderThickness="0,1,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Ellipse
+                            Grid.Column="0"
+                            Width="36"
+                            Height="36"
+                            Fill="#F0B429" />
+
+                        <StackPanel
+                            Grid.Column="1"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Text="{Binding UserName}" />
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="#8B949E"
+                                Text="{Binding UserPlan}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!--  Main Content  -->
+        <Grid Grid.Column="1" Margin="32,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--  Header Row  -->
+            <Grid Grid.Row="0" Margin="0,0,0,24">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Text="Calendar" />
+
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <!--  Search Box  -->
+                    <Border
+                        Width="200"
+                        Margin="0,0,16,0"
+                        Padding="12,8"
+                        Background="#161B22"
+                        BorderBrush="#30363D"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,8,0"
+                                FontSize="14"
+                                Foreground="#8B949E"
+                                Text="🔍" />
+                            <TextBox
+                                Width="140"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                CaretBrush="#58A6FF"
+                                FontSize="13"
+                                Foreground="#C9D1D9"
+                                Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!--  Notification Bell  -->
+                    <Button Margin="0,0,12,0" Style="{StaticResource ArrowButton}">
+                        <TextBlock FontSize="16" Text="🔔" />
+                    </Button>
+
+                    <!--  New Entry Button  -->
+                    <Button Command="{Binding NewEntryCommand}" Style="{StaticResource PrimaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock
+                                Margin="0,0,6,0"
+                                FontSize="14"
+                                FontWeight="Bold"
+                                Text="+" />
+                            <TextBlock Text="New Entry" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!--  Month Navigation & View Toggle  -->
+            <Grid Grid.Row="1" Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="28"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="{Binding MonthYearDisplay}" />
+                    <Button
+                        Margin="16,0,4,0"
+                        Command="{Binding PreviousMonthCommand}"
+                        Style="{StaticResource ArrowButton}">
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#8B949E"
+                            Text="◀" />
+                    </Button>
+                    <Button Command="{Binding NextMonthCommand}" Style="{StaticResource ArrowButton}">
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="#8B949E"
+                            Text="▶" />
+                    </Button>
+                </StackPanel>
+
+                <!--  View Toggle  -->
+                <Border
+                    Padding="4"
+                    HorizontalAlignment="Right"
+                    Background="#21262D"
+                    CornerRadius="8">
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            Command="{Binding SelectViewCommand}"
+                            CommandParameter="Month"
+                            Content="Month"
+                            Style="{StaticResource ViewToggleButton}" />
+                        <Button
+                            Background="#30363D"
+                            Command="{Binding SelectViewCommand}"
+                            CommandParameter="Week"
+                            Content="Week"
+                            Foreground="White"
+                            Style="{StaticResource ViewToggleButton}" />
+                        <Button
+                            Command="{Binding SelectViewCommand}"
+                            CommandParameter="Day"
+                            Content="Day"
+                            Style="{StaticResource ViewToggleButton}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!--  Month Subtitle & Mood Filters  -->
+            <Grid Grid.Row="2" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,16"
+                        FontSize="14"
+                        Foreground="#8B949E"
+                        Text="{Binding MonthSubtitle}" />
+
+                    <!--  Mood Filter Chips  -->
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            Background="#30363D"
+                            Command="{Binding SelectMoodFilterCommand}"
+                            CommandParameter="All Moods"
+                            Style="{StaticResource MoodChip}">
+                            <TextBlock Foreground="White" Text="All Moods" />
+                        </Button>
+                        <Button
+                            Command="{Binding SelectMoodFilterCommand}"
+                            CommandParameter="Happy"
+                            Style="{StaticResource MoodChip}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse
+                                    Width="8"
+                                    Height="8"
+                                    Margin="0,0,6,0"
+                                    Fill="#F0B429" />
+                                <TextBlock Text="Happy" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            Command="{Binding SelectMoodFilterCommand}"
+                            CommandParameter="Calm"
+                            Style="{StaticResource MoodChip}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse
+                                    Width="8"
+                                    Height="8"
+                                    Margin="0,0,6,0"
+                                    Fill="#58A6FF" />
+                                <TextBlock Text="Calm" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            Command="{Binding SelectMoodFilterCommand}"
+                            CommandParameter="Anxious"
+                            Style="{StaticResource MoodChip}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse
+                                    Width="8"
+                                    Height="8"
+                                    Margin="0,0,6,0"
+                                    Fill="#F97316" />
+                                <TextBlock Text="Anxious" />
+                            </StackPanel>
+                        </Button>
+                        <Button
+                            Command="{Binding SelectMoodFilterCommand}"
+                            CommandParameter="Productive"
+                            Style="{StaticResource MoodChip}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse
+                                    Width="8"
+                                    Height="8"
+                                    Margin="0,0,6,0"
+                                    Fill="#22C55E" />
+                                <TextBlock Text="Productive" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!--  Calendar Grid  -->
+            <Border
+                Grid.Row="3"
+                Padding="16"
+                Background="#161B22"
+                CornerRadius="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!--  Day Headers  -->
+                    <UniformGrid
+                        Grid.Row="0"
+                        Margin="0,0,0,8"
+                        Columns="7">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="MON" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="TUE" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="WED" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="THU" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="FRI" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="SAT" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="#8B949E"
+                            Text="SUN" />
+                    </UniformGrid>
+
+                    <!--  Calendar Days Grid  -->
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding CalendarDays}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="7" Rows="6" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    MinHeight="90"
+                                    Padding="8"
+                                    BorderBrush="#21262D"
+                                    BorderThickness="0,1,1,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <!--  Day Number  -->
+                                        <StackPanel
+                                            Grid.Row="0"
+                                            Margin="0,0,0,6"
+                                            Orientation="Horizontal">
+                                            <TextBlock FontSize="14" FontWeight="Medium">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#8B949E" />
+                                                        <Setter Property="Text" Value="{Binding DayNumber}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCurrentMonth}" Value="True">
+                                                                <Setter Property="Foreground" Value="#C9D1D9" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                                                <Setter Property="Foreground" Value="#58A6FF" />
+                                                                <Setter Property="FontWeight" Value="Bold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!--  Today Indicator  -->
+                                            <Ellipse
+                                                Width="6"
+                                                Height="6"
+                                                Margin="4,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Fill="#58A6FF"
+                                                Visibility="{Binding IsToday, Converter={StaticResource BoolToVisibility}}" />
+                                        </StackPanel>
+
+                                        <!--  Entries  -->
+                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Entries}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border
+                                                        Margin="0,0,0,4"
+                                                        Padding="6,4"
+                                                        Background="{Binding MoodBackground}"
+                                                        CornerRadius="6"
+                                                        Cursor="Hand">
+                                                        <StackPanel>
+                                                            <StackPanel Margin="0,0,0,2" Orientation="Horizontal">
+                                                                <Ellipse
+                                                                    Width="6"
+                                                                    Height="6"
+                                                                    Margin="0,0,4,0">
+                                                                    <Ellipse.Fill>
+                                                                        <SolidColorBrush Color="{Binding MoodColor}" />
+                                                                    </Ellipse.Fill>
+                                                                </Ellipse>
+                                                                <TextBlock
+                                                                    FontSize="9"
+                                                                    FontWeight="SemiBold"
+                                                                    Text="{Binding Mood}">
+                                                                    <TextBlock.Foreground>
+                                                                        <SolidColorBrush Color="{Binding MoodColor}" />
+                                                                    </TextBlock.Foreground>
+                                                                </TextBlock>
+                                                            </StackPanel>
+                                                            <TextBlock
+                                                                MaxWidth="100"
+                                                                FontSize="11"
+                                                                Foreground="#C9D1D9"
+                                                                Text="{Binding Title}"
+                                                                TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

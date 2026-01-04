@@ -36,6 +36,18 @@ namespace MyJournalApp
                 case "JournalEntry":
                     NavigateToJournalEntry();
                     break;
+                case "Calendar":
+                    NavigateToCalendar();
+                    break;
+                case "Timeline":
+                    NavigateToTimeline();
+                    break;
+                case "Analytics":
+                    NavigateToAnalytics();
+                    break;
+                case "Settings":
+                    NavigateToSettings();
+                    break;
             }
         }
 
@@ -64,6 +76,42 @@ namespace MyJournalApp
         {
             MainContent.Children.Clear();
             MainContent.Children.Add(new JournalEntryView());
+        }
+
+        /// <summary>
+        /// Navigates to the Calendar view.
+        /// </summary>
+        private void NavigateToCalendar()
+        {
+            MainContent.Children.Clear();
+            MainContent.Children.Add(new CalendarView());
+        }
+
+        /// <summary>
+        /// Navigates to the Timeline view.
+        /// </summary>
+        private void NavigateToTimeline()
+        {
+            MainContent.Children.Clear();
+            MainContent.Children.Add(new TimelineView());
+        }
+
+        /// <summary>
+        /// Navigates to the Analytics view.
+        /// </summary>
+        private void NavigateToAnalytics()
+        {
+            MainContent.Children.Clear();
+            MainContent.Children.Add(new AnalyticsView());
+        }
+
+        /// <summary>
+        /// Navigates to the Settings view.
+        /// </summary>
+        private void NavigateToSettings()
+        {
+            MainContent.Children.Clear();
+            MainContent.Children.Add(new SettingsView());
         }
     }
 }
