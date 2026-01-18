@@ -266,10 +266,10 @@ namespace MyJournalApp.ViewModels
                 {
                     Title = entry.Title,
                     Date = FormatEntryDate(entry.EntryDate),
-                    Mood = entry.Mood.ToString(),
-                    MoodIcon = moodIcons.GetValueOrDefault(entry.Mood, "📝"),
-                    MoodColor = moodColors.GetValueOrDefault(entry.Mood, "#58A6FF"),
-                    IconBackground = GetIconBackground(entry.Mood)
+                    Mood = entry.PrimaryMood.ToString(),
+                    MoodIcon = moodIcons.GetValueOrDefault(entry.PrimaryMood, "📝"),
+                    MoodColor = moodColors.GetValueOrDefault(entry.PrimaryMood, "#58A6FF"),
+                    IconBackground = GetIconBackground(entry.PrimaryMood)
                 });
             }
 

@@ -26,6 +26,8 @@ namespace MyJournalApp.ViewModels
         private bool _isLoading;
         private int _pageSize = 10;
         private int _currentPage = 0;
+        private DateTime _exportStartDate = DateTime.Today.AddDays(-30);
+        private DateTime _exportEndDate = DateTime.Today;
 
         #region Properties
 
@@ -178,6 +180,29 @@ namespace MyJournalApp.ViewModels
         public ICommand ClearFiltersCommand { get; }
         public ICommand RemoveTagFilterCommand { get; }
         public ICommand OpenEntryCommand { get; }
+        public ICommand ExportToPdfCommand { get; }
+
+        #endregion
+
+        #region Export Properties
+
+        /// <summary>
+        /// Start date for PDF export.
+        /// </summary>
+        public DateTime ExportStartDate
+        {
+            get => _exportStartDate;
+            set => SetProperty(ref _exportStartDate, value);
+        }
+
+        /// <summary>
+        /// End date for PDF export.
+        /// </summary>
+        public DateTime ExportEndDate
+        {
+            get => _exportEndDate;
+            set => SetProperty(ref _exportEndDate, value);
+        }
 
         #endregion
 
@@ -199,6 +224,7 @@ namespace MyJournalApp.ViewModels
             ClearFiltersCommand = new RelayCommand(ExecuteClearFilters);
             RemoveTagFilterCommand = new RelayCommand(ExecuteRemoveTagFilter);
             OpenEntryCommand = new RelayCommand(ExecuteOpenEntry);
+            ExportToPdfCommand = new RelayCommand(ExecuteExportToPdf);
 
             // Load entries
             LoadEntries();
@@ -293,49 +319,20 @@ namespace MyJournalApp.ViewModels
                 ContentPreview = entry.Content.Length > 200 ? entry.Content.Substring(0, 200) + "..." : entry.Content,
                 Month = entry.EntryDate.ToString("MMM").ToUpper(),
                 Day = entry.EntryDate.Day.ToString(),
-                Mood = entry.Mood,
-                MoodIcon = moodIcons.GetValueOrDefault(entry.Mood, "📝"),
-                MoodColor = moodColors.GetValueOrDefault(entry.Mood, "#8B949E"),
+                Mood = entry.PrimaryMood,
+                MoodIcon = moodIcons.GetValueOrDefault(entry.PrimaryMood, "📝"),
+                MoodColor = moodColors.GetValueOrDefault(entry.PrimaryMood, "#8B949E"),
                 Tags = new ObservableCollection<string>(entry.GetTagsList().Select(t => $"#{t}"))
             };
         }
 
         private void FilterEntries()
         {
-            var allEntries = _database.GetAllEntries().ToList();
+            // Build search criteria from current filter values
+            var criteria = BuildSearchCriteria();
 
-            // Apply search filter
-            if (!string.IsNullOrWhiteSpace(SearchQuery))
-            {
-                allEntries = allEntries.Where(e =>
-                    e.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
-                    e.Content.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
-                    e.Tags.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
-
-            // Apply date range filter
-            allEntries = SelectedDateRange switch
-            {
-                "Today" => allEntries.Where(e => e.EntryDate.Date == DateTime.Today).ToList(),
-                "This Week" => allEntries.Where(e => e.EntryDate >= DateTime.Today.AddDays(-7)).ToList(),
-                "This Month" => allEntries.Where(e => e.EntryDate.Month == DateTime.Today.Month && e.EntryDate.Year == DateTime.Today.Year).ToList(),
-                "Last 30 Days" => allEntries.Where(e => e.EntryDate >= DateTime.Today.AddDays(-30)).ToList(),
-                "Last 90 Days" => allEntries.Where(e => e.EntryDate >= DateTime.Today.AddDays(-90)).ToList(),
-                _ => allEntries
-            };
-
-            // Apply mood filter
-            if (SelectedMoodFilter != "All" && Enum.TryParse<MoodType>(SelectedMoodFilter, out var moodType))
-            {
-                allEntries = allEntries.Where(e => e.Mood == moodType).ToList();
-            }
-
-            // Apply tag filter
-            if (!string.IsNullOrEmpty(SelectedTagFilter))
-            {
-                var tagToFind = SelectedTagFilter.TrimStart('#');
-                allEntries = allEntries.Where(e => e.Tags.Contains(tagToFind, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
+            // Execute database-level search
+            var allEntries = _database.SearchEntries(criteria);
 
             Entries.Clear();
             foreach (var entry in allEntries)
@@ -343,11 +340,63 @@ namespace MyJournalApp.ViewModels
                 Entries.Add(CreateTimelineEntry(entry));
             }
 
-            // If no entries after filtering, show sample data
-            if (Entries.Count == 0 && string.IsNullOrWhiteSpace(SearchQuery) && SelectedDateRange == "All Time")
+            // If no entries after filtering and no filters applied, show sample data
+            if (Entries.Count == 0 && !criteria.HasFilters)
             {
                 AddSampleEntries();
             }
+        }
+
+        /// <summary>
+        /// Builds a SearchCriteria object from current filter property values.
+        /// </summary>
+        private SearchCriteria BuildSearchCriteria()
+        {
+            var criteria = new SearchCriteria();
+
+            // Keyword search
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                criteria.Keyword = SearchQuery;
+            }
+
+            // Date range
+            var (startDate, endDate) = GetDateRangeFromSelection(SelectedDateRange);
+            criteria.StartDate = startDate;
+            criteria.EndDate = endDate;
+
+            // Mood filter
+            if (SelectedMoodFilter != "All" && Enum.TryParse<MoodType>(SelectedMoodFilter, out var moodType))
+            {
+                criteria.PrimaryMood = moodType;
+                criteria.IncludeSecondaryMoods = true; // Also match secondary moods
+            }
+
+            // Tag filter
+            if (!string.IsNullOrEmpty(SelectedTagFilter))
+            {
+                criteria.Tag = SelectedTagFilter;
+            }
+
+            return criteria;
+        }
+
+        /// <summary>
+        /// Converts date range selection string to start/end dates.
+        /// </summary>
+        private (DateTime? StartDate, DateTime? EndDate) GetDateRangeFromSelection(string dateRange)
+        {
+            var today = DateTime.Today;
+
+            return dateRange switch
+            {
+                "Today" => (today, today),
+                "This Week" => (today.AddDays(-7), today),
+                "This Month" => (new DateTime(today.Year, today.Month, 1), today),
+                "Last 30 Days" => (today.AddDays(-30), today),
+                "Last 90 Days" => (today.AddDays(-90), today),
+                _ => (null, null) // "All Time" - no date filter
+            };
         }
 
         private void ExecuteNavigate(object? param)
@@ -398,6 +447,14 @@ namespace MyJournalApp.ViewModels
                 // Navigate to edit entry
                 NavigationService.Instance.NavigateTo("JournalEntry");
             }
+        }
+
+        /// <summary>
+        /// Exports journal entries to PDF based on selected date range.
+        /// </summary>
+        private void ExecuteExportToPdf()
+        {
+            PdfExportService.Instance.ExportToPdf(ExportStartDate, ExportEndDate);
         }
     }
 

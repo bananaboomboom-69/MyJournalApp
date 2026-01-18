@@ -204,7 +204,7 @@ namespace MyJournalApp.ViewModels
             if (SelectedMoodFilter != "All Moods")
             {
                 var moodType = Enum.Parse<MoodType>(SelectedMoodFilter);
-                entries = entries.Where(e => e.Mood == moodType).ToList();
+                entries = entries.Where(e => e.PrimaryMood == moodType).ToList();
             }
 
             // Generate 6 weeks (42 days)
@@ -228,9 +228,9 @@ namespace MyJournalApp.ViewModels
                     {
                         Id = entry.Id,
                         Title = entry.Title,
-                        Mood = entry.Mood.ToString().ToUpper(),
-                        MoodColor = GetMoodColor(entry.Mood),
-                        MoodBackground = GetMoodBackground(entry.Mood)
+                        Mood = entry.PrimaryMood.ToString().ToUpper(),
+                        MoodColor = GetMoodColor(entry.PrimaryMood),
+                        MoodBackground = GetMoodBackground(entry.PrimaryMood)
                     });
                 }
 
