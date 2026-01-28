@@ -1,0 +1,292 @@
+@page "/journal"
+@using myjournal.Models
+@using myjournal.Services
+@using myjournal.ViewModels
+@inject JournalListViewModel ViewModel
+@inject NavigationManager Navigation
+
+<div class="journal-page">
+    <div class="page-header">
+        <h1>Journal Entries</h1>
+        <button class="btn btn-primary" @onclick="CreateNewEntry">
+            ✏️ New Entry
+        </button>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    <!-- Search & Filters -->
+    <div class="card mb-4">
+        <div class="filter-section">
+            <div class="search-box">
+                <input type="text" class="form-input" @bind="ViewModel.SearchTerm" @bind:event="oninput"
+                    placeholder="Search entries..." />
+                <button class="btn btn-primary" @onclick="Search">🔍 Search</button>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label class="form-label">Mood</label>
+                    <select class="form-select" @bind="filterMood">
+                        <option value="">All Moods</option>
+                        @foreach (MoodType mood in Enum.GetValues(typeof(MoodType)))
+                        {
+                            <option value="@mood">@mood.GetEmoji() @mood</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label class="form-label">Tag</label>
+                    <select class="form-select" @bind="filterTagId">
+                        <option value="">All Tags</option>
+                        @foreach (var tag in ViewModel.AvailableTags)
+                        {
+                            <option value="@tag.Id">@tag.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="filter-item">
+                    <label class="form-label">From</label>
+                    <input type="date" class="form-input" @bind="filterStartDate" />
+                </div>
+
+                <div class="filter-item">
+                    <label class="form-label">To</label>
+                    <input type="date" class="form-input" @bind="filterEndDate" />
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn btn-secondary" @onclick="ApplyFilters">Apply</button>
+                    <button class="btn btn-outline" @onclick="ClearFilters">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (ViewModel.IsBusy)
+    {
+        <div class="flex justify-center p-4">
+            <div class="spinner"></div>
+        </div>
+    }
+    else if (ViewModel.Entries.Any())
+    {
+        <div class="entries-list">
+            @foreach (var entry in ViewModel.Entries)
+            {
+                <div class="entry-card" @onclick="() => ViewEntry(entry.Id)">
+                    <div class="entry-card-header">
+                        <div class="entry-card-date">
+                            <span class="entry-card-day">@entry.EntryDate.Day</span>
+                            <span class="entry-card-month">@entry.EntryDate.ToString("MMM")</span>
+                        </div>
+                        <div style="flex: 1; margin-left: 1rem;">
+                            <h3 class="entry-card-title">@entry.Title</h3>
+                            <div class="entry-card-mood">
+                                <span>@entry.PrimaryMood.GetEmoji() @entry.PrimaryMood</span>
+                                @if (entry.SecondaryMood1.HasValue)
+                                {
+                                    <span class="text-muted">• @entry.SecondaryMood1.Value.GetEmoji()</span>
+                                }
+                                @if (entry.SecondaryMood2.HasValue)
+                                {
+                                    <span class="text-muted">• @entry.SecondaryMood2.Value.GetEmoji()</span>
+                                }
+                            </div>
+                        </div>
+                        @if (entry.IsFavorite)
+                        {
+                            <span class="favorite-star">⭐</span>
+                        }
+                    </div>
+                    <p class="entry-card-preview">@entry.GetPreview(200)</p>
+                    <div class="entry-card-footer">
+                        <div class="entry-card-tags">
+                            @foreach (var tag in entry.Tags.Take(4))
+                            {
+                                <span class="tag tag-primary" style="background-color: @(tag.Color)20; color: @tag.Color;">
+                                    #@tag.Name
+                                </span>
+                            }
+                            @if (entry.Tags.Count > 4)
+                            {
+                                <span class="text-muted text-sm">+@(entry.Tags.Count - 4)</span>
+                            }
+                        </div>
+                        <span class="entry-card-meta">@entry.WordCount words</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        @if (ViewModel.TotalPages > 1)
+        {
+            <div class="pagination">
+                <button class="pagination-btn" disabled="@(ViewModel.CurrentPage == 1)" @onclick="PreviousPage">
+                    ←
+                </button>
+
+                @foreach (var pageNum in ViewModel.GetPageNumbers())
+                {
+                    <button class="@GetPaginationClass(pageNum)" @onclick="() => GoToPage(pageNum)">
+                        @pageNum
+                    </button>
+                }
+
+                <button class="pagination-btn" disabled="@(ViewModel.CurrentPage == ViewModel.TotalPages)" @onclick="NextPage">
+                    →
+                </button>
+            </div>
+        }
+
+        <div class="text-center text-muted text-sm mt-2">
+            Showing @((ViewModel.CurrentPage - 1) * ViewModel.PageSize + 1) -
+            @Math.Min(ViewModel.CurrentPage * ViewModel.PageSize, ViewModel.TotalEntries)
+            of @ViewModel.TotalEntries entries
+        </div>
+    }
+    else
+    {
+        <div class="card text-center p-4">
+            <p class="text-muted mb-3">
+                @if (ViewModel.HasFilters)
+                {
+                    <span>No entries match your search criteria.</span>
+                }
+                else
+                {
+                    <span>No journal entries yet. Start writing!</span>
+                }
+            </p>
+            <button class="btn btn-primary" @onclick="CreateNewEntry">
+                ✏️ Create Your First Entry
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    .journal-page {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .search-box {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .search-box .form-input {
+        flex: 1;
+    }
+
+    .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    .filter-item {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .favorite-star {
+        font-size: 1.25rem;
+    }
+</style>
+
+@code {
+    private string filterMood = "";
+    private string filterTagId = "";
+    private DateTime? filterStartDate;
+    private DateTime? filterEndDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadEntriesCommand.ExecuteAsync(null);
+    }
+
+    private string GetPaginationClass(int page)
+    {
+        return $"pagination-btn {(page == ViewModel.CurrentPage ? "active" : "")}";
+    }
+
+    private async Task Search()
+    {
+        await ViewModel.SearchCommand.ExecuteAsync(null);
+    }
+
+    private async Task ApplyFilters()
+    {
+        ViewModel.FilterMood = string.IsNullOrEmpty(filterMood) ? null : Enum.Parse<MoodType>(filterMood);
+        ViewModel.FilterTagId = string.IsNullOrEmpty(filterTagId) ? null : int.Parse(filterTagId);
+        ViewModel.FilterStartDate = filterStartDate;
+        ViewModel.FilterEndDate = filterEndDate;
+
+        await ViewModel.ApplyFiltersCommand.ExecuteAsync(null);
+    }
+
+    private async Task ClearFilters()
+    {
+        filterMood = "";
+        filterTagId = "";
+        filterStartDate = null;
+        filterEndDate = null;
+
+        await ViewModel.ClearFiltersCommand.ExecuteAsync(null);
+    }
+
+    private async Task PreviousPage()
+    {
+        await ViewModel.PreviousPageCommand.ExecuteAsync(null);
+    }
+
+    private async Task NextPage()
+    {
+        await ViewModel.NextPageCommand.ExecuteAsync(null);
+    }
+
+    private async Task GoToPage(int page)
+    {
+        await ViewModel.GoToPageCommand.ExecuteAsync(page);
+    }
+
+    private void ViewEntry(int id)
+    {
+        Navigation.NavigateTo($"/entry/{id}");
+    }
+
+    private void CreateNewEntry()
+    {
+        Navigation.NavigateTo("/entry");
+    }
+}

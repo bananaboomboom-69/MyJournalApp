@@ -1,0 +1,267 @@
+﻿@page "/"
+@using myjournal.Models
+@using myjournal.Services
+@using myjournal.ViewModels
+@inject DashboardViewModel ViewModel
+@inject NavigationManager Navigation
+
+<div class="dashboard">
+    @if (ViewModel.IsBusy)
+    {
+        <div class="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+    }
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    <!-- Stats Grid -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="stat-icon streak">🔥</div>
+            <div class="stat-content">
+                <div class="stat-value">@ViewModel.StreakInfo.CurrentStreak</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon entries">📝</div>
+            <div class="stat-content">
+                <div class="stat-value">@ViewModel.TotalEntries</div>
+                <div class="stat-label">Total Entries</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon words">📚</div>
+            <div class="stat-content">
+                <div class="stat-value">@ViewModel.TotalWords.ToString("N0")</div>
+                <div class="stat-label">Total Words</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon mood">
+                @if (ViewModel.MostFrequentMood.HasValue)
+                {
+                    @ViewModel.MostFrequentMood.Value.GetEmoji()
+                }
+                else
+                {
+                    <span>😊</span>
+                }
+            </div>
+            <div class="stat-content">
+                <div class="stat-value">
+                    @(ViewModel.MostFrequentMood?.ToString() ?? "No Data")
+                </div>
+                <div class="stat-label">Top Mood</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Today's Entry Card -->
+        <div class="card half">
+            <div class="card-header">
+                <h3 class="card-title">Today's Entry</h3>
+                <span class="text-muted text-sm">@DateTime.Today.ToString("MMMM dd, yyyy")</span>
+            </div>
+            @if (ViewModel.TodayEntry != null)
+            {
+                <div class="entry-card" @onclick="() => EditEntry(ViewModel.TodayEntry.Id)">
+                    <div class="entry-card-header">
+                        <div>
+                            <h4 class="entry-card-title">@ViewModel.TodayEntry.Title</h4>
+                            <div class="entry-card-mood">
+                                <span>@ViewModel.TodayEntry.PrimaryMood.GetEmoji()</span>
+                                <span class="text-sm text-muted">@ViewModel.TodayEntry.PrimaryMood</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="entry-card-preview">@ViewModel.TodayEntry.GetPreview()</p>
+                    <div class="entry-card-footer">
+                        <div class="entry-card-tags">
+                            @foreach (var tag in ViewModel.TodayEntry.Tags.Take(3))
+                            {
+                                <span class="tag tag-primary">#@tag.Name</span>
+                            }
+                        </div>
+                        <span class="entry-card-meta">@ViewModel.TodayEntry.WordCount words</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-center p-4">
+                    <p class="text-muted mb-3">You haven't written today yet.</p>
+                    <button class="btn btn-primary btn-lg" @onclick="CreateNewEntry">
+                        <span>✏️</span> Start Writing
+                    </button>
+                </div>
+            }
+        </div>
+
+        <!-- Streak Info -->
+        <div class="card half">
+            <div class="card-header">
+                <h3 class="card-title">Streak Stats</h3>
+                <span class="streak-display">
+                    <span class="streak-fire">🔥</span>
+                    @ViewModel.StreakInfo.CurrentStreak days
+                </span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">@ViewModel.StreakInfo.LongestStreak</div>
+                        <div class="stat-label">Longest Streak</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">@ViewModel.StreakInfo.TotalDaysWithEntries</div>
+                        <div class="stat-label">Days Written</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-content">
+                        <div class="stat-value">@ViewModel.StreakInfo.MissedDays</div>
+                        <div class="stat-label">Missed Days (30d)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood Distribution -->
+        <div class="card half">
+            <div class="card-header">
+                <h3 class="card-title">Mood Distribution</h3>
+            </div>
+            @if (ViewModel.MoodDistribution.Any())
+            {
+                <div class="mood-distribution">
+                    @foreach (var mood in ViewModel.MoodDistribution.Take(5))
+                    {
+                        <div class="mood-bar-item">
+                            <div class="mood-bar-header">
+                                <span>@mood.Mood.GetEmoji() @mood.Mood</span>
+                                <span class="text-muted text-sm">@mood.Count entries (@mood.Percentage%)</span>
+                            </div>
+                            <div class="mood-bar">
+                                <div class="mood-bar-fill" style="width: @(mood.Percentage)%; background-color: @mood.Mood.GetColor()"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-center text-muted p-4">No mood data yet. Start journaling!</p>
+            }
+        </div>
+
+        <!-- Recent Entries -->
+        <div class="card half">
+            <div class="card-header">
+                <h3 class="card-title">Recent Entries</h3>
+                <a href="/journal" class="text-sm">View All →</a>
+            </div>
+            @if (ViewModel.RecentEntries.Any())
+            {
+                <div class="entries-list">
+                    @foreach (var entry in ViewModel.RecentEntries.Take(3))
+                    {
+                        <div class="entry-card" @onclick="() => EditEntry(entry.Id)">
+                            <div class="entry-card-header">
+                                <div class="entry-card-date">
+                                    <span class="entry-card-day">@entry.EntryDate.Day</span>
+                                    <span class="entry-card-month">@entry.EntryDate.ToString("MMM")</span>
+                                </div>
+                                <div style="flex: 1; margin-left: 1rem;">
+                                    <h4 class="entry-card-title">@entry.Title</h4>
+                                    <div class="entry-card-mood">
+                                        <span>@entry.PrimaryMood.GetEmoji()</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="text-center text-muted p-4">No entries yet. Start your journal!</p>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .mood-distribution {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .mood-bar-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+    
+    .mood-bar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .mood-bar {
+        height: 8px;
+        background-color: var(--bg-tertiary);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+    }
+    
+    .mood-bar-fill {
+        height: 100%;
+        border-radius: var(--radius-full);
+        transition: width 0.5s ease;
+    }
+    
+    @@media (min-width: 768px) {
+        .dashboard-grid > .card.half {
+            grid-column: span 6;
+        }
+        .dashboard-grid > .card.third {
+            grid-column: span 4;
+        }
+    }
+
+    @@media (min-width: 1200px) {
+        .dashboard-grid > .card.quarter {
+            grid-column: span 3;
+        }
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadDataCommand.ExecuteAsync(null);
+    }
+
+    private void CreateNewEntry()
+    {
+        Navigation.NavigateTo("/entry");
+    }
+
+    private void EditEntry(int id)
+    {
+        Navigation.NavigateTo($"/entry/{id}");
+    }
+}

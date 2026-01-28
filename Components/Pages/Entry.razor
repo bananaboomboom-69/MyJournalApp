@@ -1,0 +1,364 @@
+@page "/entry"
+@page "/entry/{EntryId:int}"
+@using myjournal.Models
+@using myjournal.Services
+@using myjournal.ViewModels
+@inject EntryViewModel ViewModel
+@inject NavigationManager Navigation
+@inject ITagService TagService
+
+<div class="entry-page">
+    @if (ViewModel.IsBusy)
+    {
+        <div class="loading-overlay">
+            <div class="spinner"></div>
+        </div>
+    }
+
+    <div class="entry-header">
+        <div class="flex items-center gap-3">
+            <button class="btn btn-outline btn-icon" @onclick="GoBack">←</button>
+            <div>
+                <h1>@(ViewModel.IsEditing ? "Edit Entry" : "New Entry")</h1>
+                <span class="text-muted text-sm">@ViewModel.EntryDate.ToString("dddd, MMMM dd, yyyy")</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            @if (ViewModel.IsEditing && ViewModel.Entry.Id > 0)
+            {
+                <button class="btn btn-danger" @onclick="DeleteEntry">🗑️ Delete</button>
+            }
+            <button class="btn btn-primary" @onclick="SaveEntry" disabled="@ViewModel.IsBusy">
+                💾 Save Entry
+            </button>
+        </div>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    @if (ViewModel.IsSaved)
+    {
+        <div class="alert alert-success">
+            <span>✅</span>
+            <span>Entry saved successfully!</span>
+        </div>
+    }
+
+    <div class="entry-content">
+        <div class="entry-main">
+            <!-- Title -->
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" class="form-input" 
+                       @bind="ViewModel.Title" 
+                       placeholder="What's on your mind today?" />
+            </div>
+
+            <!-- Date -->
+            <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-input" 
+                       @bind="ViewModel.EntryDate" />
+                <span class="form-hint">Note: Only one entry per day is allowed.</span>
+            </div>
+
+            <!-- Editor -->
+            <div class="form-group">
+                <label class="form-label">Content</label>
+                <div class="editor">
+                    <div class="editor-toolbar">
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("**", "**")' title="Bold">
+                            <strong>B</strong>
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("*", "*")' title="Italic">
+                            <em>I</em>
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("~~", "~~")' title="Strikethrough">
+                            <s>S</s>
+                        </button>
+                        <div class="editor-toolbar-divider"></div>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("# ", "")' title="Heading 1">
+                            H1
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("## ", "")' title="Heading 2">
+                            H2
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("### ", "")' title="Heading 3">
+                            H3
+                        </button>
+                        <div class="editor-toolbar-divider"></div>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("- ", "")' title="Bullet List">
+                            •
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("1. ", "")' title="Numbered List">
+                            1.
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("> ", "")' title="Quote">
+                            "
+                        </button>
+                        <div class="editor-toolbar-divider"></div>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("[", "](url)")' title="Link">
+                            🔗
+                        </button>
+                        <button class="editor-toolbar-btn" @onclick='() => InsertMarkdown("`", "`")' title="Code">
+                            &lt;/&gt;
+                        </button>
+                        <div class="editor-toolbar-divider"></div>
+                        <button class="editor-toolbar-btn @(showPreview ? "active" : "")" @onclick="TogglePreview" title="Preview">
+                            👁️
+                        </button>
+                    </div>
+                    
+                    @if (showPreview)
+                    {
+                        <div class="markdown-preview">
+                            @((MarkupString)ViewModel.MarkdownPreview)
+                        </div>
+                    }
+                    else
+                    {
+                        <textarea class="form-textarea editor-textarea" 
+                                  @bind="ViewModel.Content" 
+                                  @bind:event="oninput"
+                                  @onchange="OnContentChanged"
+                                  placeholder="Start writing your thoughts...&#10;&#10;Use Markdown for formatting:&#10;**bold**, *italic*, # headings, - lists"></textarea>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="entry-sidebar">
+            <!-- Primary Mood -->
+            <div class="card mb-4">
+                <h4 class="card-title mb-3">Primary Mood <span class="text-danger">*</span></h4>
+                <div class="mood-grid">
+                    @foreach (MoodType mood in Enum.GetValues(typeof(MoodType)))
+                    {
+                        <div class="mood-item @(ViewModel.PrimaryMood == mood ? "selected" : "")"
+                             @onclick="() => SelectPrimaryMood(mood)">
+                            <span class="mood-emoji">@mood.GetEmoji()</span>
+                            <span class="mood-label">@mood</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Secondary Moods -->
+            <div class="card mb-4">
+                <h4 class="card-title mb-3">Secondary Moods <span class="text-muted text-sm">(up to 2)</span></h4>
+                <div class="mood-grid">
+                    @foreach (MoodType mood in Enum.GetValues(typeof(MoodType)))
+                    {
+                        if (mood != ViewModel.PrimaryMood)
+                        {
+                            var isSelected = ViewModel.SecondaryMood1 == mood || ViewModel.SecondaryMood2 == mood;
+                            <div class="mood-item @(isSelected ? "selected" : "")"
+                                 @onclick="() => ToggleSecondaryMood(mood)">
+                                <span class="mood-emoji">@mood.GetEmoji()</span>
+                                <span class="mood-label">@mood</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Tags</h4>
+                    <button class="btn btn-sm btn-outline" @onclick="ToggleNewTag">+ New</button>
+                </div>
+                
+                @if (showNewTagInput)
+                {
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" class="form-input" 
+                               @bind="newTagName" 
+                               placeholder="Tag name" />
+                        <input type="color" @bind="newTagColor" style="width: 50px; height: 38px;" />
+                        <button class="btn btn-primary btn-sm" @onclick="CreateTag">Add</button>
+                    </div>
+                }
+
+                <div class="tag-list">
+                    @foreach (var tag in ViewModel.AvailableTags)
+                    {
+                        <span class="tag tag-clickable @(ViewModel.IsTagSelected(tag) ? "tag-selected" : "")"
+                              style="background-color: @(tag.Color)20; color: @tag.Color; border: 1px solid @tag.Color"
+                              @onclick="() => ViewModel.ToggleTag(tag)">
+                            #@tag.Name
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .entry-page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .entry-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .entry-content {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 1.5rem;
+    }
+    
+    .entry-main {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .entry-sidebar {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .editor {
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+    
+    .editor-textarea {
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        border-top: none;
+        min-height: 400px;
+    }
+    
+    .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .text-danger {
+        color: var(--accent-danger);
+    }
+    
+    @@media (max-width: 1024px) {
+        .entry-content {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int? EntryId { get; set; }
+
+    private bool showPreview = false;
+    private bool showNewTagInput = false;
+    private string newTagName = "";
+    private string newTagColor = "#6366F1";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.InitializeAsync(EntryId);
+    }
+
+    private void SelectPrimaryMood(MoodType mood)
+    {
+        ViewModel.PrimaryMood = mood;
+        
+        // Clear secondary if same as primary
+        if (ViewModel.SecondaryMood1 == mood) ViewModel.SecondaryMood1 = null;
+        if (ViewModel.SecondaryMood2 == mood) ViewModel.SecondaryMood2 = null;
+    }
+
+    private void ToggleSecondaryMood(MoodType mood)
+    {
+        if (ViewModel.SecondaryMood1 == mood)
+        {
+            ViewModel.SecondaryMood1 = null;
+        }
+        else if (ViewModel.SecondaryMood2 == mood)
+        {
+            ViewModel.SecondaryMood2 = null;
+        }
+        else if (ViewModel.SecondaryMood1 == null)
+        {
+            ViewModel.SecondaryMood1 = mood;
+        }
+        else if (ViewModel.SecondaryMood2 == null)
+        {
+            ViewModel.SecondaryMood2 = mood;
+        }
+        // Max 2 secondary moods - ignore if both are set
+    }
+
+    private void InsertMarkdown(string before, string after)
+    {
+        ViewModel.Content = ViewModel.Content + before + after;
+    }
+
+    private void TogglePreview()
+    {
+        if (!showPreview)
+        {
+            ViewModel.UpdatePreview();
+        }
+        showPreview = !showPreview;
+    }
+
+    private void OnContentChanged(ChangeEventArgs e)
+    {
+        ViewModel.Content = e.Value?.ToString() ?? "";
+        if (showPreview)
+        {
+            ViewModel.UpdatePreview();
+        }
+    }
+
+    private void ToggleNewTag()
+    {
+        showNewTagInput = !showNewTagInput;
+        newTagName = "";
+        newTagColor = "#6366F1";
+    }
+
+    private async Task CreateTag()
+    {
+        if (!string.IsNullOrWhiteSpace(newTagName))
+        {
+            var tag = await TagService.CreateTagAsync(newTagName, newTagColor);
+            ViewModel.AvailableTags.Add(tag);
+            ViewModel.ToggleTag(tag);
+            showNewTagInput = false;
+            newTagName = "";
+        }
+    }
+
+    private async Task SaveEntry()
+    {
+        await ViewModel.SaveCommand.ExecuteAsync(null);
+    }
+
+    private async Task DeleteEntry()
+    {
+        await ViewModel.DeleteCommand.ExecuteAsync(null);
+        Navigation.NavigateTo("/journal");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

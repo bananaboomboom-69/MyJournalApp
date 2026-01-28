@@ -1,0 +1,349 @@
+@page "/login"
+@using myjournal.ViewModels
+@inject LoginViewModel ViewModel
+@inject NavigationManager Navigation
+
+<div class="login-container" data-theme="dark" @onkeydown="HandleKeyDown" tabindex="0" @ref="loginContainer">
+    <div class="login-card">
+        <div class="login-logo">📔</div>
+        <h1 class="login-title">My Journal</h1>
+        <p class="login-subtitle">Enter your PIN to unlock</p>
+
+        @if (ViewModel.HasError)
+        {
+            <div class="alert alert-error @(showShake ? "shake" : "")">
+                <span>@ViewModel.ErrorMessage</span>
+            </div>
+        }
+
+        <!-- PIN Display - Shows dots for each digit -->
+        <div class="pin-display">
+            @for (int i = 0; i < PinLength; i++)
+            {
+                var filled = i < enteredPin.Length;
+                <div class="pin-dot @(filled ? "filled" : "") @(showShake ? "shake" : "")"></div>
+            }
+        </div>
+
+        <!-- Numeric Keypad -->
+        <div class="pin-pad">
+            @foreach (var key in new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫" })
+            {
+                <button class="pin-key @(key == "C" ? "key-clear" : "") @(key == "⌫" ? "key-backspace" : "")"
+                    @onclick="() => HandleKeyPress(key)" disabled="@ViewModel.IsBusy">
+                    @key
+                </button>
+            }
+        </div>
+
+        @if (ViewModel.IsBusy)
+        {
+            <div class="pin-status">
+                <div class="spinner-small"></div>
+                <span>Verifying...</span>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 2rem;
+        outline: none;
+    }
+
+    .login-card {
+        background: rgba(30, 41, 59, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 1.5rem;
+        padding: 3rem 2.5rem;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        max-width: 360px;
+        width: 100%;
+    }
+
+    .login-logo {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @@keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .login-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 0.5rem;
+    }
+
+    .login-subtitle {
+        color: #94a3b8;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+    }
+
+    /* PIN Display - The dots */
+    .pin-display {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .pin-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(99, 102, 241, 0.5);
+        background: transparent;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pin-dot.filled {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border-color: #6366f1;
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+    }
+
+    /* Numeric Keypad */
+    .pin-pad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        max-width: 280px;
+        margin: 0 auto;
+    }
+
+    .pin-key {
+        aspect-ratio: 1.4;
+        border: none;
+        border-radius: 1rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: rgba(51, 65, 85, 0.6);
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pin-key:hover:not(:disabled) {
+        background: rgba(99, 102, 241, 0.3);
+        transform: scale(1.05);
+    }
+
+    .pin-key:active:not(:disabled) {
+        transform: scale(0.95);
+        background: rgba(99, 102, 241, 0.5);
+    }
+
+    .pin-key:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pin-key.key-clear {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        font-size: 1rem;
+    }
+
+    .pin-key.key-clear:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.4);
+    }
+
+    .pin-key.key-backspace {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+    }
+
+    .pin-key.key-backspace:hover:not(:disabled) {
+        background: rgba(245, 158, 11, 0.4);
+    }
+
+    /* Status indicator */
+    .pin-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+
+    .spinner-small {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(99, 102, 241, 0.3);
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Shake animation for errors */
+    .shake {
+        animation: shake 0.4s ease-in-out;
+    }
+
+    @@keyframes shake {
+
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+
+        20% {
+            transform: translateX(-10px);
+        }
+
+        40% {
+            transform: translateX(10px);
+        }
+
+        60% {
+            transform: translateX(-10px);
+        }
+
+        80% {
+            transform: translateX(10px);
+        }
+    }
+
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+</style>
+
+@code {
+    private ElementReference loginContainer;
+    private string enteredPin = "";
+    private const int PinLength = 4;
+    private bool showShake = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.CheckPinRequiredCommand.ExecuteAsync(null);
+
+        if (ViewModel.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Focus the container for keyboard input
+            await loginContainer.FocusAsync();
+        }
+    }
+
+    private async Task HandleKeyPress(string key)
+    {
+        showShake = false;
+
+        if (key == "C")
+        {
+            enteredPin = "";
+        }
+        else if (key == "⌫")
+        {
+            if (enteredPin.Length > 0)
+            {
+                enteredPin = enteredPin[..^1];
+            }
+        }
+        else if (char.IsDigit(key[0]) && enteredPin.Length < PinLength)
+        {
+            enteredPin += key;
+
+            // Auto-submit when PIN length reached
+            if (enteredPin.Length == PinLength)
+            {
+                await SubmitPin();
+            }
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (ViewModel.IsBusy) return;
+
+        if (e.Key.Length == 1 && char.IsDigit(e.Key[0]))
+        {
+            await HandleKeyPress(e.Key);
+        }
+        else if (e.Key == "Backspace")
+        {
+            await HandleKeyPress("⌫");
+        }
+        else if (e.Key == "Escape")
+        {
+            await HandleKeyPress("C");
+        }
+        else if (e.Key == "Enter" && enteredPin.Length == PinLength)
+        {
+            await SubmitPin();
+        }
+    }
+
+    private async Task SubmitPin()
+    {
+        ViewModel.Pin = enteredPin;
+        await ViewModel.LoginCommand.ExecuteAsync(null);
+
+        if (ViewModel.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            // Show error shake animation
+            showShake = true;
+            enteredPin = "";
+            StateHasChanged();
+
+            // Reset shake after animation
+            await Task.Delay(400);
+            showShake = false;
+        }
+    }
+}

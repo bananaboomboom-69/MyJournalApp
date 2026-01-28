@@ -1,0 +1,88 @@
+﻿@inherits LayoutComponentBase
+@inject IThemeService ThemeService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="page" data-theme="@currentTheme">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="sidebar-logo-icon">📔</div>
+                <span>My Journal</span>
+            </div>
+        </div>
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-bar">
+            <div class="flex items-center gap-3">
+                <span class="text-muted">@DateTime.Today.ToString("dddd, MMMM dd, yyyy")</span>
+            </div>
+            <div class="flex items-center gap-3">
+                @if (streakCount > 0)
+                {
+                    <div class="streak-display">
+                        <span class="streak-fire">🔥</span>
+                        <span>@streakCount day streak</span>
+                    </div>
+                }
+                <button class="btn btn-icon btn-outline" @onclick="ToggleTheme" title="Toggle theme">
+                    @(currentTheme == "dark" ? "☀️" : "🌙")
+                </button>
+            </div>
+        </div>
+
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private string currentTheme = "dark";
+    private int streakCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentTheme = await ThemeService.GetCurrentThemeAsync();
+        ThemeService.ThemeChanged += OnThemeChanged;
+
+        // Load streak count
+        await LoadStreakAsync();
+    }
+
+    private async Task LoadStreakAsync()
+    {
+        try
+        {
+            var streakService = ((IServiceProvider)ThemeService).GetService<IStreakService>();
+            if (streakService != null)
+            {
+                var info = await streakService.GetStreakInfoAsync();
+                streakCount = info.CurrentStreak;
+            }
+        }
+        catch
+        {
+            // Ignore errors loading streak
+        }
+    }
+
+    private void OnThemeChanged(object? sender, string theme)
+    {
+        currentTheme = theme;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleTheme()
+    {
+        var newTheme = currentTheme == "dark" ? "light" : "dark";
+        await ThemeService.SetThemeAsync(newTheme);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+}

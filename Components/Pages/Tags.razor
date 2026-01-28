@@ -1,0 +1,300 @@
+@page "/tags"
+@using myjournal.ViewModels
+@using myjournal.Models
+@inject TagsViewModel ViewModel
+
+<div class="page-header">
+    <h1>Manage Tags</h1>
+</div>
+
+@if (ViewModel.HasError)
+{
+    <div class="alert alert-error">
+        <span>⚠️</span>
+        <span>@ViewModel.ErrorMessage</span>
+    </div>
+}
+
+<div class="tags-container">
+    
+    <!-- Create New Tag -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="card-title">✨ Create New Tag</h3>
+        </div>
+        <div class="create-tag-form">
+            <div class="form-group flex-grow">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" @bind="ViewModel.NewTagName" placeholder="e.g., Ideas, Projects..." />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Color</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" class="color-input" @bind="ViewModel.NewTagColor" />
+                    <span class="color-preview" style="background-color: @ViewModel.NewTagColor"></span>
+                </div>
+            </div>
+            <div class="form-group flex-end">
+                <button class="btn btn-primary" @onclick="ViewModel.CreateTagCommand.ExecuteAsync" disabled="@ViewModel.IsBusy">
+                    <span>+</span> Add Tag
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tags-grid">
+        <!-- Custom Tags -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">My Tags</h3>
+            </div>
+            
+            @if (ViewModel.CustomTags.Any())
+            {
+                <div class="tag-list-vertical">
+                    @foreach (var tag in ViewModel.CustomTags)
+                    {
+                        <div class="tag-item-row">
+                            <span class="tag" style="background-color: @(tag.Color)20; color: @tag.Color; border: 1px solid @tag.Color">
+                                #@tag.Name
+                            </span>
+                            
+                            <div class="tag-actions">
+                                <button class="btn btn-sm btn-outline btn-icon" @onclick="() => ViewModel.StartEditingCommand.Execute(tag)" title="Edit">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-danger btn-icon" @onclick="() => ViewModel.DeleteTagCommand.ExecuteAsync(tag)" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <p class="text-muted">No custom tags yet. Create one above!</p>
+                </div>
+            }
+        </div>
+
+        <!-- Pre-built Tags -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Default Tags</h3>
+                <span class="badge">Read-only</span>
+            </div>
+            <div class="tag-list-wrap">
+                @foreach (var tag in ViewModel.PreBuiltTags)
+                {
+                    <span class="tag" style="background-color: @(tag.Color)20; color: @tag.Color; border: 1px solid @tag.Color">
+                        #@tag.Name
+                    </span>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal Overlay -->
+@if (ViewModel.IsEditing)
+{
+    <div class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Edit Tag</h3>
+                <button class="btn-close" @onclick="ViewModel.CancelEditingCommand.Execute">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" @bind="ViewModel.EditTagName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <div class="color-picker-wrapper full-width">
+                        <input type="color" class="color-input" @bind="ViewModel.EditTagColor" />
+                        <span class="color-preview" style="background-color: @ViewModel.EditTagColor"></span>
+                        <span class="color-code">@ViewModel.EditTagColor</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" @onclick="ViewModel.CancelEditingCommand.Execute">Cancel</button>
+                <button class="btn btn-primary" @onclick="ViewModel.UpdateTagCommand.ExecuteAsync">Save Changes</button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .tags-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .mb-4 { margin-bottom: 2rem; }
+
+    .create-tag-form {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .flex-grow { flex: 1; min-width: 200px; }
+    .flex-end { align-self: flex-end; padding-bottom: 2px; }
+
+    .tags-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .color-picker-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .color-input {
+        opacity: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        z-index: 2;
+    }
+
+    .color-preview {
+        width: 42px;
+        height: 42px;
+        border-radius: var(--radius-md);
+        border: 2px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .tag-list-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .tag-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        transition: transform 0.2s ease;
+    }
+    
+    .tag-item-row:hover {
+        transform: translateX(4px);
+    }
+
+    .tag-actions {
+        display: flex;
+        gap: 0.5rem;
+        opacity: 0.7;
+    }
+
+    .tag-item-row:hover .tag-actions {
+        opacity: 1;
+    }
+
+    .tag-list-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        background-color: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-tertiary);
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+    }
+    
+    .modal-card {
+        background-color: var(--bg-card);
+        border-radius: var(--radius-lg);
+        width: 90%;
+        max-width: 500px;
+        box-shadow: var(--shadow-xl);
+        border: 1px solid var(--border-color);
+        animation: slideUp 0.3s ease;
+    }
+    
+    .modal-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header h3 { margin: 0; }
+    
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .modal-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+    
+    .full-width {
+        width: 100%;
+        height: 42px;
+    }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadTagsCommand.ExecuteAsync(null);
+    }
+}

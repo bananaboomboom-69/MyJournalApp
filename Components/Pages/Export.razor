@@ -1,0 +1,270 @@
+@page "/export"
+@using myjournal.Models
+@using myjournal.ViewModels
+@inject ExportViewModel ViewModel
+
+<div class="export-page">
+    <div class="page-header">
+        <h1>Export to PDF</h1>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    @if (ViewModel.ExportSuccess)
+    {
+        <div class="alert alert-success">
+            <span>✅</span>
+            <span>Export completed successfully!</span>
+        </div>
+    }
+
+    <div class="export-content">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Select Date Range</h3>
+            </div>
+
+            <div class="date-range-form">
+                <div class="quick-select">
+                    <span class="text-sm text-muted">Quick select:</span>
+                    <button class="btn btn-sm btn-outline" @onclick="SetLastWeek">Last Week</button>
+                    <button class="btn btn-sm btn-outline" @onclick="SetLastMonth">Last Month</button>
+                    <button class="btn btn-sm btn-outline" @onclick="SetLastYear">Last Year</button>
+                </div>
+
+                <div class="date-inputs">
+                    <div class="form-group">
+                        <label class="form-label">From Date</label>
+                        <input type="date" class="form-input" @bind="ViewModel.StartDate" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">To Date</label>
+                        <input type="date" class="form-input" @bind="ViewModel.EndDate" />
+                    </div>
+                    <button class="btn btn-secondary" @onclick="LoadPreview" disabled="@ViewModel.IsBusy">
+                        Preview Entries
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (ViewModel.IsBusy)
+        {
+            <div class="flex justify-center p-4">
+                <div class="spinner"></div>
+            </div>
+        }
+
+        @if (ViewModel.PreviewEntries.Any())
+        {
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Preview (@ViewModel.EntryCount entries)</h3>
+                    <button class="btn btn-primary" @onclick="ExportToPdf" disabled="@ViewModel.IsExporting">
+                        @if (ViewModel.IsExporting)
+                        {
+                            <span>Exporting...</span>
+                        }
+                        else
+                        {
+                            <span>📤 Export to PDF</span>
+                        }
+                    </button>
+                </div>
+
+                <div class="preview-list">
+                    @foreach (var entry in ViewModel.PreviewEntries.Take(10))
+                    {
+                        <div class="preview-item">
+                            <div class="preview-date">
+                                <span class="preview-day">@entry.EntryDate.Day</span>
+                                <span class="preview-month">@entry.EntryDate.ToString("MMM")</span>
+                            </div>
+                            <div class="preview-content">
+                                <h4>@entry.Title</h4>
+                                <p class="text-muted text-sm">
+                                    @entry.PrimaryMood.GetEmoji() @entry.PrimaryMood • @entry.WordCount words
+                                </p>
+                            </div>
+                        </div>
+                    }
+                    @if (ViewModel.PreviewEntries.Count > 10)
+                    {
+                        <div class="text-center text-muted p-2">
+                            ... and @(ViewModel.PreviewEntries.Count - 10) more entries
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (ViewModel.ExportSuccess && !string.IsNullOrEmpty(ViewModel.ExportedFilePath))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">✅ Export Complete</h3>
+                    </div>
+                    <div class="export-result">
+                        <p class="text-muted mb-3">Your PDF has been saved to:</p>
+                        <code class="file-path">@ViewModel.ExportedFilePath</code>
+                        <button class="btn btn-primary mt-3" @onclick="OpenExportedFile">
+                            📂 Open File
+                        </button>
+                    </div>
+                </div>
+            }
+        }
+        else if (!ViewModel.IsBusy && ViewModel.EntryCount == 0)
+        {
+            <div class="card text-center p-4">
+                <p class="text-muted">No entries found in the selected date range.</p>
+                <p class="text-sm text-muted">Try selecting a different date range.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .export-page {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .export-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .date-range-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .quick-select {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .date-inputs {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .date-inputs .form-group {
+        flex: 1;
+        min-width: 150px;
+        margin-bottom: 0;
+    }
+
+    .preview-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .preview-item {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+    }
+
+    .preview-date {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem;
+        background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+        border-radius: var(--radius-md);
+        color: white;
+        min-width: 50px;
+    }
+
+    .preview-day {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .preview-month {
+        font-size: 0.625rem;
+        text-transform: uppercase;
+    }
+
+    .preview-content h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 0.9375rem;
+    }
+
+    .export-result {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .file-path {
+        display: block;
+        padding: 0.75rem 1rem;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        word-break: break-all;
+        font-size: 0.875rem;
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadPreviewCommand.ExecuteAsync(null);
+    }
+
+    private void SetLastWeek()
+    {
+        ViewModel.SetLastWeek();
+        StateHasChanged();
+    }
+
+    private void SetLastMonth()
+    {
+        ViewModel.SetLastMonth();
+        StateHasChanged();
+    }
+
+    private void SetLastYear()
+    {
+        ViewModel.SetLastYear();
+        StateHasChanged();
+    }
+
+    private async Task LoadPreview()
+    {
+        await ViewModel.LoadPreviewCommand.ExecuteAsync(null);
+    }
+
+    private async Task ExportToPdf()
+    {
+        await ViewModel.ExportToPdfCommand.ExecuteAsync(null);
+    }
+
+    private async Task OpenExportedFile()
+    {
+        await ViewModel.OpenExportedFileCommand.ExecuteAsync(null);
+    }
+}

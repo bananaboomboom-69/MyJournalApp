@@ -1,0 +1,244 @@
+@page "/calendar"
+@using myjournal.Models
+@using myjournal.ViewModels
+@inject CalendarViewModel ViewModel
+@inject NavigationManager Navigation
+
+<div class="calendar-page">
+    <div class="page-header">
+        <h1>Calendar</h1>
+        <button class="btn btn-primary" @onclick="CreateNewEntry">
+            ✏️ New Entry
+        </button>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    <div class="calendar-container">
+        <div class="calendar">
+            <div class="calendar-header">
+                <button class="btn btn-outline btn-icon" @onclick="PreviousMonth">←</button>
+                <h2 class="calendar-title">@ViewModel.MonthYearDisplay</h2>
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary btn-sm" @onclick="GoToToday">Today</button>
+                    <button class="btn btn-outline btn-icon" @onclick="NextMonth">→</button>
+                </div>
+            </div>
+
+            <div class="calendar-weekdays">
+                <div class="calendar-weekday">Sun</div>
+                <div class="calendar-weekday">Mon</div>
+                <div class="calendar-weekday">Tue</div>
+                <div class="calendar-weekday">Wed</div>
+                <div class="calendar-weekday">Thu</div>
+                <div class="calendar-weekday">Fri</div>
+                <div class="calendar-weekday">Sat</div>
+            </div>
+
+            <div class="calendar-grid">
+                @foreach (var day in ViewModel.CalendarDays)
+                {
+                    <div class="calendar-day @GetDayClasses(day)" @onclick="() => SelectDate(day)">
+                        @if (day.IsCurrentMonth)
+                        {
+                            <span>@day.DayNumber</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="calendar-sidebar">
+            @if (ViewModel.SelectedDate.HasValue)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">@ViewModel.SelectedDate.Value.ToString("MMMM dd, yyyy")</h3>
+                    </div>
+
+                    @if (ViewModel.SelectedEntry != null)
+                    {
+                        <div class="entry-preview">
+                            <h4>@ViewModel.SelectedEntry.Title</h4>
+                            <div class="entry-mood mb-2">
+                                <span>@ViewModel.SelectedEntry.PrimaryMood.GetEmoji()</span>
+                                <span class="text-muted">@ViewModel.SelectedEntry.PrimaryMood</span>
+                            </div>
+                            <p class="text-muted">@ViewModel.SelectedEntry.GetPreview(200)</p>
+                            <div class="flex gap-2 mt-3">
+                                <span class="text-sm text-muted">@ViewModel.SelectedEntry.WordCount words</span>
+                            </div>
+                            <button class="btn btn-primary w-full mt-3" @onclick="() => ViewEntry(ViewModel.SelectedEntry.Id)">
+                                View Entry →
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center p-4">
+                            <p class="text-muted mb-3">No entry for this day.</p>
+                            <button class="btn btn-primary" @onclick="CreateEntryForDate">
+                                ✏️ Create Entry
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="text-center p-4">
+                        <p class="text-muted">Select a date to view or create an entry.</p>
+                    </div>
+                </div>
+            }
+
+            <div class="card mt-4">
+                <h4 class="card-title mb-3">Legend</h4>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot today"></div>
+                        <span>Today</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot has-entry"></div>
+                        <span>Has Entry</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-page {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .calendar-container {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 1.5rem;
+    }
+
+    .calendar-sidebar {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .entry-preview h4 {
+        margin-bottom: 0.5rem;
+    }
+
+    .entry-mood {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .legend-dot.today {
+        background-color: var(--accent-primary);
+    }
+
+    .legend-dot.has-entry {
+        background-color: var(--accent-success);
+    }
+
+    @@media (max-width: 900px) {
+        .calendar-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadCalendarCommand.ExecuteAsync(null);
+    }
+
+    private string GetDayClasses(CalendarDay day)
+    {
+        var classes = new List<string>();
+
+        if (!day.IsCurrentMonth) classes.Add("other-month");
+        if (day.IsToday) classes.Add("today");
+        if (day.HasEntry) classes.Add("has-entry");
+
+        return string.Join(" ", classes);
+    }
+
+    private async Task SelectDate(CalendarDay day)
+    {
+        if (day.IsCurrentMonth && day.Date.HasValue)
+        {
+            await ViewModel.SelectDateCommand.ExecuteAsync(day.Date.Value);
+        }
+    }
+
+    private async Task PreviousMonth()
+    {
+        await ViewModel.PreviousMonthCommand.ExecuteAsync(null);
+    }
+
+    private async Task NextMonth()
+    {
+        await ViewModel.NextMonthCommand.ExecuteAsync(null);
+    }
+
+    private async Task GoToToday()
+    {
+        await ViewModel.GoToTodayCommand.ExecuteAsync(null);
+        await ViewModel.SelectDateCommand.ExecuteAsync(DateTime.Today);
+    }
+
+    private void ViewEntry(int id)
+    {
+        Navigation.NavigateTo($"/entry/{id}");
+    }
+
+    private void CreateNewEntry()
+    {
+        Navigation.NavigateTo("/entry");
+    }
+
+    private void CreateEntryForDate()
+    {
+        if (ViewModel.SelectedDate.HasValue)
+        {
+            Navigation.NavigateTo($"/entry?date={ViewModel.SelectedDate.Value:yyyy-MM-dd}");
+        }
+    }
+}

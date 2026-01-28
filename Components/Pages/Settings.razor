@@ -1,0 +1,282 @@
+@page "/settings"
+@using myjournal.ViewModels
+@inject SettingsViewModel ViewModel
+@inject IThemeService ThemeService
+
+<div class="settings-page">
+    <div class="page-header">
+        <h1>Settings</h1>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ViewModel.SuccessMessage))
+    {
+        <div class="alert alert-success">
+            <span>✅</span>
+            <span>@ViewModel.SuccessMessage</span>
+        </div>
+    }
+
+    <div class="settings-grid">
+        <!-- Appearance -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🎨 Appearance</h3>
+            </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h4>Theme</h4>
+                    <p class="text-muted text-sm">Choose your preferred color theme</p>
+                </div>
+                <div class="theme-selector">
+                    <button class="theme-option @(ViewModel.CurrentTheme == "light" ? "active" : "")"
+                        @onclick='() => SetTheme("light")'>
+                        <span>☀️</span>
+                        <span>Light</span>
+                    </button>
+                    <button class="theme-option @(ViewModel.CurrentTheme == "dark" ? "active" : "")"
+                        @onclick='() => SetTheme("dark")'>
+                        <span>🌙</span>
+                        <span>Dark</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🔒 Security & Privacy</h3>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h4>PIN Protection</h4>
+                    <p class="text-muted text-sm">Protect your journal with a PIN code</p>
+                </div>
+                <div>
+                    @if (ViewModel.IsPinEnabled)
+                    {
+                        <span class="tag tag-primary">Enabled</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Not Set</span>
+                    }
+                </div>
+            </div>
+
+            @if (ViewModel.IsChangingPin)
+            {
+                <div class="pin-form">
+                    <div class="form-group">
+                        <label class="form-label">New PIN (min 4 characters)</label>
+                        <input type="password" class="form-input" @bind="ViewModel.NewPin" placeholder="Enter new PIN" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm PIN</label>
+                        <input type="password" class="form-input" @bind="ViewModel.ConfirmPin" placeholder="Confirm PIN" />
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-primary" @onclick="SavePin" disabled="@ViewModel.IsBusy">
+                            Save PIN
+                        </button>
+                        <button class="btn btn-outline" @onclick="CancelPinChange">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="flex gap-2 mt-3">
+                    @if (ViewModel.IsPinEnabled)
+                    {
+                        <button class="btn btn-secondary" @onclick="StartChangingPin">
+                            Change PIN
+                        </button>
+                        <button class="btn btn-danger" @onclick="RemovePin">
+                            Remove PIN
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary" @onclick="StartChangingPin">
+                            Set PIN
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Export -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📤 Export</h3>
+            </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h4>Export to PDF</h4>
+                    <p class="text-muted text-sm">Export your journal entries as PDF files</p>
+                </div>
+                <a href="/export" class="btn btn-primary">
+                    Go to Export →
+                </a>
+            </div>
+        </div>
+
+        <!-- About -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">ℹ️ About</h3>
+            </div>
+            <div class="about-info">
+                <div class="about-item">
+                    <span class="text-muted">App Name</span>
+                    <span>My Journal</span>
+                </div>
+                <div class="about-item">
+                    <span class="text-muted">Version</span>
+                    <span>1.0.0</span>
+                </div>
+                <div class="about-item">
+                    <span class="text-muted">Platform</span>
+                    <span>.NET MAUI Hybrid</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .settings-page {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .settings-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+
+    .setting-info h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+    }
+
+    .theme-selector {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .theme-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.75rem 1.25rem;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        background-color: var(--bg-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+
+    .theme-option:hover {
+        border-color: var(--accent-primary);
+    }
+
+    .theme-option.active {
+        border-color: var(--accent-primary);
+        background-color: rgba(99, 102, 241, 0.1);
+    }
+
+    .theme-option span:first-child {
+        font-size: 1.5rem;
+    }
+
+    .theme-option span:last-child {
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .pin-form {
+        padding: 1rem;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        margin-top: 1rem;
+    }
+
+    .about-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .about-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .about-item:last-child {
+        border-bottom: none;
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadSettingsCommand.ExecuteAsync(null);
+    }
+
+    private async Task SetTheme(string theme)
+    {
+        await ViewModel.SetThemeCommand.ExecuteAsync(theme);
+    }
+
+    private void StartChangingPin()
+    {
+        ViewModel.StartChangingPinCommand.Execute(null);
+    }
+
+    private void CancelPinChange()
+    {
+        ViewModel.CancelChangingPinCommand.Execute(null);
+    }
+
+    private async Task SavePin()
+    {
+        await ViewModel.SavePinCommand.ExecuteAsync(null);
+    }
+
+    private async Task RemovePin()
+    {
+        await ViewModel.RemovePinCommand.ExecuteAsync(null);
+    }
+}

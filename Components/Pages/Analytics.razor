@@ -1,0 +1,346 @@
+@page "/analytics"
+@using myjournal.Models
+@using myjournal.Services
+@using myjournal.ViewModels
+@inject AnalyticsViewModel ViewModel
+
+<div class="analytics-page">
+    <div class="page-header">
+        <h1>Analytics & Insights</h1>
+    </div>
+
+    @if (ViewModel.HasError)
+    {
+        <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>@ViewModel.ErrorMessage</span>
+        </div>
+    }
+
+    @if (ViewModel.IsBusy)
+    {
+        <div class="flex justify-center p-4">
+            <div class="spinner"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Stats Overview -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-icon streak">🔥</div>
+                <div class="stat-content">
+                    <div class="stat-value">@ViewModel.StreakInfo.CurrentStreak</div>
+                    <div class="stat-label">Current Streak</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon streak">🏆</div>
+                <div class="stat-content">
+                    <div class="stat-value">@ViewModel.StreakInfo.LongestStreak</div>
+                    <div class="stat-label">Longest Streak</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon words">📚</div>
+                <div class="stat-content">
+                    <div class="stat-value">@ViewModel.TotalWordCount.ToString("N0")</div>
+                    <div class="stat-label">Total Words</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon entries">📊</div>
+                <div class="stat-content">
+                    <div class="stat-value">@ViewModel.AverageWordCount.ToString("N0")</div>
+                    <div class="stat-label">Avg Words/Entry</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analytics-grid">
+            <!-- Mood Distribution -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Mood Distribution</h3>
+                    @if (ViewModel.MostFrequentMood.HasValue)
+                    {
+                        <span class="text-sm">
+                            Top: @ViewModel.MostFrequentMood.Value.GetEmoji() @ViewModel.MostFrequentMood.Value
+                        </span>
+                    }
+                </div>
+                @if (ViewModel.MoodDistribution.Any())
+                {
+                    <div class="mood-chart">
+                        @foreach (var mood in ViewModel.MoodDistribution)
+                        {
+                            <div class="mood-chart-item">
+                                <div class="mood-chart-label">
+                                    <span class="mood-emoji">@mood.Mood.GetEmoji()</span>
+                                    <span>@mood.Mood</span>
+                                </div>
+                                <div class="mood-chart-bar-container">
+                                    <div class="mood-chart-bar" 
+                                         style="width: @(mood.Percentage)%; background-color: @mood.Mood.GetColor()">
+                                    </div>
+                                </div>
+                                <span class="mood-chart-value">@mood.Count (@mood.Percentage%)</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-center text-muted p-4">No mood data available yet.</p>
+                }
+            </div>
+
+            <!-- Tag Usage -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Top Tags</h3>
+                </div>
+                @if (ViewModel.TagUsage.Any())
+                {
+                    <div class="tag-chart">
+                        @foreach (var tag in ViewModel.TagUsage.Take(8))
+                        {
+                            <div class="tag-chart-item">
+                                <div class="tag-chart-label">
+                                    <span class="tag" style="background-color: @(tag.Tag.Color)20; color: @tag.Tag.Color;">
+                                        #@tag.Tag.Name
+                                    </span>
+                                </div>
+                                <div class="tag-chart-bar-container">
+                                    <div class="tag-chart-bar" style="width: @(tag.Percentage)%; background-color: @tag.Tag.Color">
+                                    </div>
+                                </div>
+                                <span class="tag-chart-value">@tag.Count</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-center text-muted p-4">No tag data available yet.</p>
+                }
+            </div>
+
+            <!-- Word Count Trend -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Word Count Trend (30 Days)</h3>
+                </div>
+                @if (ViewModel.WordCountTrend.Any())
+                {
+                    <div class="word-trend">
+                        @{
+                            var maxWords = ViewModel.WordCountTrend.Max(w => w.WordCount);
+                            maxWords = maxWords > 0 ? maxWords : 1;
+                        }
+                        @foreach (var trend in ViewModel.WordCountTrend.TakeLast(14))
+                        {
+                            var height = (double)trend.WordCount / maxWords * 100;
+                            <div class="word-trend-item">
+                                <div class="word-trend-bar-container">
+                                    <div class="word-trend-bar" style="height: @(height)%"></div>
+                                </div>
+                                <span class="word-trend-label">@trend.Date.ToString("dd")</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="word-trend-legend">
+                        <span class="text-sm text-muted">Last 14 days • Hover for details</span>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-center text-muted p-4">No word count data available yet.</p>
+                }
+            </div>
+
+            <!-- Monthly Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Monthly Summary</h3>
+                </div>
+                @if (ViewModel.MonthlyStats.Any())
+                {
+                    <div class="monthly-stats">
+                        @foreach (var month in ViewModel.MonthlyStats.OrderByDescending(m => m.Year).ThenByDescending(m => m.Month))
+                        {
+                            <div class="monthly-stat-item">
+                                <div class="monthly-stat-header">
+                                    <span class="font-semibold">
+                                        @(new DateTime(month.Year, month.Month, 1).ToString("MMMM yyyy"))
+                                    </span>
+                                </div>
+                                <div class="monthly-stat-details">
+                                    <div class="monthly-stat-detail">
+                                        <span class="text-muted">Entries</span>
+                                        <span class="font-semibold">@month.EntryCount</span>
+                                    </div>
+                                    <div class="monthly-stat-detail">
+                                        <span class="text-muted">Words</span>
+                                        <span class="font-semibold">@month.TotalWords.ToString("N0")</span>
+                                    </div>
+                                    <div class="monthly-stat-detail">
+                                        <span class="text-muted">Avg</span>
+                                        <span class="font-semibold">@month.AverageWords.ToString("N0")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-center text-muted p-4">No monthly data available yet.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .analytics-page {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    
+    .mood-chart, .tag-chart {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .mood-chart-item, .tag-chart-item {
+        display: grid;
+        grid-template-columns: 120px 1fr 80px;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .mood-chart-label, .tag-chart-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .mood-chart-bar-container, .tag-chart-bar-container {
+        height: 8px;
+        background-color: var(--bg-tertiary);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+    }
+    
+    .mood-chart-bar, .tag-chart-bar {
+        height: 100%;
+        border-radius: var(--radius-full);
+        transition: width 0.5s ease;
+    }
+    
+    .mood-chart-value, .tag-chart-value {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        text-align: right;
+    }
+    
+    .word-trend {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 150px;
+        padding: 0 0.5rem;
+    }
+    
+    .word-trend-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+    }
+    
+    .word-trend-bar-container {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+    }
+    
+    .word-trend-bar {
+        width: 80%;
+        background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        min-height: 4px;
+        transition: height 0.3s ease;
+    }
+    
+    .word-trend-label {
+        font-size: 0.625rem;
+        color: var(--text-tertiary);
+        margin-top: 0.25rem;
+    }
+    
+    .word-trend-legend {
+        text-align: center;
+        margin-top: 0.75rem;
+    }
+    
+    .monthly-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .monthly-stat-item {
+        padding: 0.75rem;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-md);
+    }
+    
+    .monthly-stat-header {
+        margin-bottom: 0.5rem;
+    }
+    
+    .monthly-stat-details {
+        display: flex;
+        gap: 1.5rem;
+    }
+    
+    .monthly-stat-detail {
+        display: flex;
+        flex-direction: column;
+        font-size: 0.875rem;
+    }
+    
+    @@media (max-width: 900px) {
+        .analytics-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .mood-chart-item, .tag-chart-item {
+            grid-template-columns: 100px 1fr 60px;
+        }
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await ViewModel.LoadAnalyticsCommand.ExecuteAsync(null);
+    }
+}
